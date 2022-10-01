@@ -1,0 +1,86 @@
+Standar API
+
+{root.api}/api/{versions}/{grouping}/{endpoint}
+SAMPLE:
+http://localhost:4000/api/auth/login
+
+Standar API Response:
+200 - OK                        --> Call API Success
+201 - CREATED                   --> Post Success
+400 - BAD REQUEST               --> Error on client side
+401 - UNAUTHORIZED              --> User not authorized
+403 - FORBIDDEN                 --> User not allowed to access
+404 - NOT FOUND                 --> Request endpoint not found
+500 - INTERNAL SERVER ERROR     --> Error server side
+502 - BAD GATEWAY               --> Invalid response from another request
+
+===========================================================================
+GROUP: Authentication
+[1]. register
+req:
+{
+    "name": "jhon doe",
+    "email": "admin@mail.com",
+    "password": "1234"
+}
+
+res:
+{
+    "message": "Register success",
+    "data": {
+        "id": 1,
+        "name": "jhon doe",
+        "email": "admin@mail.com",
+        "password": "1234"
+    }
+}
+
+[2]. Login
+req:
+{
+    "email": "admin@mail.com",
+    "password": "1234"
+}
+
+res:
+{
+    "message": "Login success",
+    "data": {
+        "name": "jhon doe",
+        "email": "admin@mail.com",
+        "password": "1234"
+    }
+}
+
+===========================================================================
+GROUP: Blog
+[1]. Create
+[POST : {root.api}/api/{versions}/blog/post
+
+req:
+{
+    "title": "Title Blog",
+    "image": "imagefile.png",
+    "body": "Lorem Ipsum is simply dummy text of the printing"
+}
+
+res:
+{
+    "message": "Create blog post has been success",
+    "data": {
+        "title": "Title Blog",
+        "image": "imagefile.png",
+        "body": "Lorem Ipsum is simply dummy text of the printing",
+        "created_at": "30/09/2022",
+        "author": {
+            "uid": 1,
+            "name": "Testing"
+        }
+    }
+}
+
+err-response:
+201 -> Blog Post Berhasil Dibuat
+400 -> Input yang anda masukan tidak valid
+
+[2]. Get
