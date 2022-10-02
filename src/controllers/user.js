@@ -9,13 +9,13 @@ const moment = require("moment");
 // @desc    Signup new user
 // @route   POST /api/users
 // @access  Public
-const signUp = asyncHandler(async (req, res) => {
+const signUp = asyncHandler(async (req, res,next) => {
     const { name, email, password } = req.body
 
     if (!name || !email || !password) {
         const error = new Error('Please add all fields')
         error.errorStatus = 400
-        throw error
+        next(error)
     }
 
     // Check if user exists
@@ -24,7 +24,7 @@ const signUp = asyncHandler(async (req, res) => {
     if (userExists) {
         const error = new Error('User already exists')
         error.errorStatus = 400
-        throw error
+        next(error)
     }
 
     // Hash password
@@ -49,15 +49,16 @@ const signUp = asyncHandler(async (req, res) => {
             }
         })
     } else {
-        res.status(400)
-        throw new Error('Invalid user data')
+        const error = new Error('Invalid user data')
+        error.errorStatus = 400
+        next(error)
     }
 })
 
 // @desc    Signin a user
 // @route   POST /api/v1/users/login
 // @access  Public
-const signIn = asyncHandler(async (req, res) => {
+const signIn = asyncHandler(async (req, res,next) => {
     const { email, password } = req.body
 
     // Check for user email
@@ -65,14 +66,15 @@ const signIn = asyncHandler(async (req, res) => {
 
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-        const err = new Error('Something went wrong')
-        err.errorStatus = 400
-        err.data = errors.array()
-        throw err
+        const error = new Error('Something went wrong')
+        error.errorStatus = 400
+        error.data = errors.array()
+        next(error)
     }
 
     if (user && (await bcrypt.compare(password, user.password))) {
-        user.updatedAt = new Date()
+        user.lastSignIn = new Date()
+        user.lastSignOut = null
         const token = generateToken(user._id)
         await user.save()
 
@@ -92,20 +94,20 @@ const signIn = asyncHandler(async (req, res) => {
                 email: user.email,
                 token,
                 token_type: 'Bearer',
-                last_login: user.updatedAt
+                last_login: moment(user.lastSignIn).format('YYYY-MM-DD HH:mm:ss')
             }
         })
     } else {
         const error = new Error('Invalid credentials')
         error.errorStatus = 400
-        throw error
+        next(error)
     }
 })
 
 // @desc    Signout a user
 // @route   POST /api/v1/users/logout
 // @access  Public
-const signOut = asyncHandler(async (req, res) => {
+const signOut = asyncHandler(async (req, res, next) => {
     let token
     if (
         req.headers.authorization &&
@@ -118,9 +120,21 @@ const signOut = asyncHandler(async (req, res) => {
                 if (!result) {
                     const error = new Error('Token is invalid')
                     error.errorStatus = 404
-                    throw error
+                    next(error)
                 }
-                return Oauth.findByIdAndDelete(result._id)
+
+                const decoded = jwt.verify(token, process.env.JWT_SECRET)
+                User.findById(decoded.id)
+                    .then(async(user) => {
+                        user.lastSignOut = new Date()
+                        await user.save()
+                        return Oauth.findByIdAndDelete(result._id)
+                    })
+                    .catch(() => {
+                        const error = new Error('Token is invalid')
+                        error.errorStatus = 400
+                        next(error)
+                    })
             })
             .then(() => {
                 res.status(200).json({
@@ -129,13 +143,16 @@ const signOut = asyncHandler(async (req, res) => {
             })
             .catch((err) => {
                 console.log(err)
+                const error = new Error('Something went wrong!')
+                error.errorStatus = 500
+                next(error)
             })
     }
 
     if (!token) {
         const error = new Error('Token is required!')
         error.errorStatus = 400
-        throw error
+        next(error)
     }
 })
 

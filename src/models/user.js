@@ -16,6 +16,14 @@ const userSchema = new Schema(
             type: String,
             required: [true, 'Please add a password'],
         },
+        lastSignIn: {
+            type: Date,
+            required: false
+        },
+        lastSignOut: {
+            type: Date,
+            required: false
+        }
     },
     {
         timestamps: true,
